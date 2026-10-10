@@ -43,7 +43,6 @@ if st.session_state.step == 1:
             placeholder="e.g., Augmentin 625mg or Paracetamol",
         )
 
-        symptoms = st.multiselect(
             symptoms = st.text_area(
     "Symptoms / Adverse Reactions Experienced:",
     placeholder="Type the symptoms here (e.g., severe skin rash, dizziness, fever...)",
