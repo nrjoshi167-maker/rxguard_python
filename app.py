@@ -38,20 +38,21 @@ if st.session_state.step == 1:
 
     with st.form("rxguard_form"):
         st.markdown("### 📋 1. Questionnaire & Symptoms")
-       med_name = st.text_input(
-        "Name of Medicine Prescribed / Dispensed",
-        placeholder="e.g., Augmentin 625mg or Paracetamol",
-    )
+        
+        med_name = st.text_input(
+            "Name of Medicine Prescribed / Dispensed",
+            placeholder="e.g., Augmentin 625mg or Paracetamol",
+        )
 
-       symptoms = st.text_area(
-        "Symptoms / Adverse Reactions Experienced:",
-        placeholder="Type the symptoms here (e.g., severe skin rash, dizziness, fever...)"
-    )
+        symptoms = st.text_area(
+            "Symptoms / Adverse Reactions Experienced:",
+            placeholder="Type the symptoms here (e.g., severe skin rash, dizziness, fever...)"
+        )
 
         route = st.selectbox(
-        "Administration Route",
-        ["Oral (Swallowed)", "Topical (Skin)", "Injection"],
-    )
+            "Administration Route",
+            ["Oral (Swallowed)", "Topical (Skin)", "Injection"],
+        )
 
         narrative = st.text_area(
             "Narrative / Administration Timeline",
