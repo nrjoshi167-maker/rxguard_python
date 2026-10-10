@@ -1,5 +1,5 @@
 import streamlit as st
-import google.generativeai as genai
+import google.genai as genai
 from PIL import Image
 
 # Page Configuration for Smartphone Responsiveness
