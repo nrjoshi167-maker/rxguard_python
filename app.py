@@ -12,7 +12,7 @@ st.set_page_config(
 
 # Secure API Key Check via Streamlit Secrets (Server-Side Protection)
 if "GEMINI_API_KEY" in st.secrets:
-  client = genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
+client = genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
 else:
   st.warning(
       "⚠️ GEMINI_API_KEY not found in Streamlit Secrets. Please configure your"
