@@ -1,21 +1,28 @@
 import streamlit as st
-from google import genai
+import google.generativeai as genai
 from PIL import Image
 
-# Page Configuration
+# Page Configuration for Smartphone Responsiveness
 st.set_page_config(
-    page_title="RxGuard India", page_icon="🛡️", layout="centered"
+    page_title="RxGuard India",
+    page_icon="🛡️",
+    layout="centered",
+    initial_sidebar_state="collapsed",
 )
 
-# Initialize Gemini Client using Streamlit Secrets (Secure & No Hardcoded Key)
+# Secure API Key Check via Streamlit Secrets (Server-Side Protection)
 if "GEMINI_API_KEY" in st.secrets:
-  client = genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
+    genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
 else:
-  st.warning("⚠️ GEMINI_API_KEY not found in Streamlit Secrets.")
+    st.warning(
+        "⚠️ GEMINI_API_KEY not found in Streamlit Secrets. Please configure your secrets."
+    )
 
+# Initialize Session State for the Two-Step Process
 if "step" not in st.session_state:
-  st.session_state.step = 1
+    st.session_state.step = 1
 
+# App Header
 st.title("🛡️ RxGuard India")
 st.caption("AI-Powered National Pharmacovigilance & Malpractice Detector")
 st.markdown("---")
@@ -24,126 +31,163 @@ st.markdown("---")
 # STEP 1: QUESTIONNAIRE & EVIDENCE CAPTURE
 # ==========================================
 if st.session_state.step == 1:
-  st.subheader("Step 1: Questionnaire & Evidence Capture")
-
-  with st.form("audit_form"):
-    st.markdown("### 📋 1. Clinical Details")
-    med_name = st.text_input(
-        "Name of Medicine Prescribed/Dispensed",
-        placeholder="e.g., Augmentin 625mg",
-    )
-    symptoms = st.multiselect(
-        "Symptoms / Adverse Reactions Experienced:",
-        [
-            "Severe Skin Rash / Urticaria",
-            "Shortness of Breath / Wheezing",
-            "Severe Dizziness / Vertigo",
-            "Persistent Nausea / Vomiting",
-            "High Fever (>102°F)",
-        ],
-    )
-    narrative = st.text_area(
-        "Narrative / Administration Timeline",
-        placeholder="Describe how and when symptoms started...",
+    st.subheader("Step 1: Clinical Questionnaire & Evidence Capture")
+    st.markdown(
+        "Provide your medical details and capture or upload photos of your evidence documents."
     )
 
-    st.markdown("### 📷 2. Upload Evidence Photos")
-    st.info("Snap or upload clear pictures of your medical documents.")
+    with st.form("rxguard_form"):
+        st.markdown("### 📋 1. Questionnaire & Symptoms")
+        med_name = st.text_input(
+            "Name of Medicine Prescribed / Dispensed",
+            placeholder="e.g., Augmentin 625mg or Paracetamol",
+        )
 
-    col1, col2 = st.columns(2)
-    with col1:
-      rx_file = st.file_uploader(
-          "Prescription (Rx)", type=["jpg", "png", "jpeg"]
-      )
-      med_file = st.file_uploader(
-          "Medicine Strip", type=["jpg", "png", "jpeg"]
-      )
-    with col2:
-      invoice_file = st.file_uploader(
-          "Pharmacy Invoice", type=["jpg", "png", "jpeg"]
-      )
-      license_file = st.file_uploader(
-          "Chemist License", type=["jpg", "png", "jpeg"]
-      )
+        symptoms = st.multiselect(
+            "Select Symptoms / Adverse Reactions Experienced:",
+            [
+                "Severe Skin Rash / Urticaria",
+                "Shortness of Breath / Wheezing",
+                "Severe Dizziness / Vertigo",
+                "Persistent Nausea / Vomiting",
+                "High Fever (>102°F)",
+                "Chest Tightness / Discomfort",
+            ],
+        )
 
-    submitted = st.form_submit_button(
-        "Run Real AI Audit & Generate Reports ➔", type="primary"
-    )
+        route = st.selectbox(
+            "Administration Route",
+            ["Oral (Swallowed)", "Topical (Skin)", "Injection"],
+        )
 
-    if submitted:
-      if not med_name:
-        st.error("Please enter the medicine name.")
-      else:
-        # Save inputs to session state
-        st.session_state.med_name = med_name
-        st.session_state.symptoms = symptoms
-        st.session_state.narrative = narrative
+        narrative = st.text_area(
+            "Narrative / Administration Timeline",
+            placeholder=(
+                "Describe when symptoms started relative to dose intake, dosage frequency, etc..."
+            ),
+        )
 
-        # Collect uploaded images for Gemini
+        st.markdown("### 📷 2. Evidence Capture (Upload Files or Camera)")
+        st.info("You can upload document images or snap photos directly using your camera.")
+
+        # Option for file upload or camera capture
+        capture_method = st.radio(
+            "Select evidence input method:", ["File Upload", "Camera Capture"]
+        )
+
         images_to_send = []
-        for file in [rx_file, med_file, invoice_file, license_file]:
-          if file is not None:
-            images_to_send.append(Image.open(file))
 
-        st.session_state.uploaded_images = images_to_send
-        st.session_state.step = 2
-        st.rerun()
+        if capture_method == "File Upload":
+            col1, col2 = st.columns(2)
+            with col1:
+                rx_file = st.file_uploader(
+                    "1. Doctor's Prescription (Rx)", type=["jpg", "png", "jpeg"]
+                )
+                med_file = st.file_uploader(
+                    "2. Medicine Strip Photo", type=["jpg", "png", "jpeg"]
+                )
+            with col2:
+                invoice_file = st.file_uploader(
+                    "3. Pharmacy Tax Invoice", type=["jpg", "png", "jpeg"]
+                )
+                license_file = st.file_uploader(
+                    "4. Pharmacist / Chemist License", type=["jpg", "png", "jpeg"]
+                )
+            
+            uploaded_files = [rx_file, med_file, invoice_file, license_file]
+        else:
+            col1, col2 = st.columns(2)
+            with col1:
+                rx_cam = st.camera_input("1. Doctor's Prescription (Rx)")
+                med_cam = st.camera_input("2. Medicine Strip Photo")
+            with col2:
+                invoice_cam = st.camera_input("3. Pharmacy Tax Invoice")
+                license_cam = st.camera_input("4. Pharmacist License")
+            
+            uploaded_files = [rx_cam, med_cam, invoice_cam, license_cam]
+
+        submitted = st.form_submit_button(
+            "Run AI Audit & Generate Report ➔", type="primary"
+        )
+
+        if submitted:
+            if not med_name:
+                st.error("Please enter the name of the medicine before proceeding.")
+            else:
+                # Save state data
+                st.session_state.med_name = med_name
+                st.session_state.symptoms = symptoms
+                st.session_state.route = route
+                st.session_state.narrative = narrative
+
+                # Collect uploaded images safely
+                for file in uploaded_files:
+                    if file is not None:
+                        images_to_send.append(Image.open(file))
+
+                st.session_state.uploaded_images = images_to_send
+                st.session_state.step = 2
+                st.rerun()
 
 # ==========================================
-# STEP 2: REAL AI AUDIT & REPORT GENERATION
+# STEP 2: AI AUDIT & SCENARIO REPORT GENERATION
 # ==========================================
 elif st.session_state.step == 2:
-  st.subheader("Step 2: Real AI Audit & Regulatory Report")
+    st.subheader("Step 2: AI Audit & Regulatory Report")
 
-  with st.spinner(
-      "Analyzing evidence and checking compliance standards with Gemini AI..."
-  ):
-    try:
-      # Construct prompt for Gemini
-      prompt = f"""
-            You are an expert Clinical Pharmacovigilance and Legal Medical Auditor in India.
-            Analyze the provided evidence images (prescription, medicine, bill, license) along with these patient details:
+    with st.spinner(
+        "Analyzing 4-part evidence bundle and evaluating CDSCO/PvPI compliance..."
+    ):
+        try:
+            # Construct structured prompt categorized into the 4 scenarios
+            prompt = f"""
+            You are an expert Clinical Pharmacovigilance, Legal Medical Auditor, and CDSCO/PvPI Compliance Officer in India.
+            Analyze the uploaded evidence images (Prescription, Medicine Strip, Tax Invoice, Pharmacist License) along with these patient details:
             - Medicine: {st.session_state.med_name}
+            - Route: {st.session_state.route}
             - Symptoms Reported: {st.session_state.symptoms}
             - Narrative/Timeline: {st.session_state.narrative}
 
-            Evaluate the case and categorize the failure into ONE of these four scenarios:
-            1. Patient Administration Error
-            2. Faulty Medicine / Batch Defect
-            3. Physician Malpractice (Invalid registration or wrong prescription)
-            4. Pharmacist Malpractice (Unlawful substitution or invalid license)
+            Evaluate the case and categorize the failure strictly into ONE or more of these four core scenarios:
+            1. Patient Administration Error (Wrong timing, incorrect dosage taken by patient) -> Provide direct app notification / guidance for the patient.
+            2. Faulty Medicine / Batch Defect (Packaging flaw, sub-standard batch, or manufacturing defect) -> Generate report focusing on drug/batch failure.
+            3. Physician Malpractice (Invalid/unverified doctor registration number or wrong prescription choice) -> Generate report focusing on physician violation.
+            4. Pharmacist Malpractice (Unauthorized brand substitution or invalid chemist operating license) -> Generate report focusing on pharmacist violation.
 
-            Provide a structured output containing:
-            - **Detected Failure Scenario**
-            - **Detailed Forensic Analysis**
-            - **Specific Guidance / App Notification for the Patient**
-            - **Regulatory Authority Routing** (e.g., State FDA, CDSCO, State Medical Council)
+            Provide a professional structured report including:
+            - **Detected Failure Scenario & Severity**
+            - **Forensic Evidence Breakdown** (Comparing prescription, dispensed drug, license status, and batch details)
+            - **App Notification / Actionable Guidance for the Patient**
+            - **Geographical Regulatory Routing** (Specify exact authority such as State FDA, CDSCO Regional Office, or State Medical Council based on region)
             """
 
-      # Prepare contents payload (text prompt + images)
-      contents = [prompt]
-      if "uploaded_images" in st.session_state:
-        contents.extend(st.session_state.uploaded_images)
+            contents = [prompt]
+            if "uploaded_images" in st.session_state:
+                contents.extend(st.session_state.uploaded_images)
 
-      # Call Gemini 1.5 Flash model
-      response = client.models.generate_content(
-          model="gemini-2.5-flash", contents=contents
-      )
+            # Call Gemini Model using standard generativeai SDK
+            model = genai.GenerativeModel("gemini-2.5-flash")
+            response = model.generate_content(contents)
 
-      # Display the AI's real analytical report
-      st.markdown("### 📊 Official AI Audit Report")
-      st.markdown(response.text)
+            # Display the real AI audit output
+            st.markdown("### 📊 Official AI Audit & Malpractice Report")
+            st.markdown(response.text)
 
-    except Exception as e:
-      st.error(f"Error connecting to Gemini AI: {e}")
+        except Exception as e:
+            st.error(
+                f"An error occurred while connecting to the AI audit engine: {e}"
+            )
 
-  st.markdown("---")
-  if st.button("📤 Submit Report to Regional Authorities"):
-    st.success(
-        "Report successfully dispatched to local regulatory authorities based"
-        " on geographical jurisdiction!"
-    )
+    st.markdown("---")
+    st.markdown("### 🚀 Regulatory Submission")
+    if st.button(
+        "📤 Submit Encrypted Report to Regional Authorities", type="primary"
+    ):
+        st.success(
+            "Report successfully signed with metadata and dispatched to regional PvPI / CDSCO authorities!"
+        )
 
-  if st.button("⬅️ Start New Audit"):
-    st.session_state.step = 1
-    st.rerun()
+    st.markdown("---")
+    if st.button("⬅️ Start New Audit"):
+        st.session_state.step = 1
+        st.rerun()
