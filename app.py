@@ -38,7 +38,7 @@ if st.session_state.step == 1:
 
     with st.form("rxguard_form"):
         st.markdown("### 📋 1. Questionnaire & Symptoms")
-       med_name = st.text_input(
+    med_name = st.text_input(
         "Name of Medicine Prescribed / Dispensed",
         placeholder="e.g., Augmentin 625mg or Paracetamol",
     )
