@@ -166,7 +166,7 @@ elif st.session_state.step == 2:
                 contents.extend(st.session_state.uploaded_images)
 
             # Call Gemini Model using standard generativeai SDK
-            model = genai.GenerativeModel("gemini-2.5-flash")
+            model = genai.GenerativeModel("gemini-3.8-flash")
             response = model.generate_content(contents)
 
             # Display the real AI audit output
