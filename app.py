@@ -33,7 +33,7 @@ st.markdown("---")
 if st.session_state.step == 1:
     st.subheader("Step 1: Clinical Questionnaire & Evidence Capture")
     st.markdown(
-        "Provide your medical details and capture or upload photos of your evidence documents. **(Evidence is mandatory)**"
+        "Provide your medical details and capture or upload photos of your evidence documents. **(ALL 4 evidence documents are mandatory)**"
     )
 
     with st.form("rxguard_form"):
@@ -62,7 +62,7 @@ if st.session_state.step == 1:
         )
 
         st.markdown("### 📷 2. Evidence Capture (Upload Files or Camera)")
-        st.info("⚠️ You must upload or snap at least one correct document image to proceed.")
+        st.info("⚠️ You MUST provide legitimate images for ALL FOUR categories to proceed.")
 
         capture_method = st.radio(
             "Select evidence input method:", ["File Upload", "Camera Capture"]
@@ -100,29 +100,30 @@ if st.session_state.step == 1:
         )
 
         if submitted:
-            images_to_send = []
-            labeled_images = []
-            
-            # Map files to their expected labels so the AI knows what it's looking at
-            file_mapping = [
-                ("Doctor's Prescription", uploaded_files[0]),
-                ("Medicine Strip Photo", uploaded_files[1]),
-                ("Pharmacy Tax Invoice", uploaded_files[2]),
-                ("Pharmacist / Chemist License", uploaded_files[3])
-            ]
+            # Check if ANY of the 4 files are missing
+            missing_files = any(file is None for file in uploaded_files)
 
-            for label, file in file_mapping:
-                if file is not None:
+            if not med_name:
+                st.error("Please enter the name of the medicine before proceeding.")
+            elif missing_files:
+                st.error("🛑 ALL FOUR evidence documents are mandatory. Please provide the Prescription, Medicine, Invoice, and License.")
+            else:
+                images_to_send = []
+                labeled_images = []
+                
+                # Map files to their expected labels so the AI knows what it's looking at
+                file_mapping = [
+                    ("Doctor's Prescription", uploaded_files[0]),
+                    ("Medicine Strip Photo", uploaded_files[1]),
+                    ("Pharmacy Tax Invoice", uploaded_files[2]),
+                    ("Pharmacist / Chemist License", uploaded_files[3])
+                ]
+
+                for label, file in file_mapping:
                     img = Image.open(file)
                     images_to_send.append(img)
                     labeled_images.extend([f"User claims this is: [{label}]", img])
 
-            # Validation Checks
-            if not med_name:
-                st.error("Please enter the name of the medicine before proceeding.")
-            elif len(images_to_send) == 0:
-                st.error("⚠️ Evidence is mandatory. Please upload or capture at least one document image.")
-            else:
                 st.session_state.med_name = med_name
                 st.session_state.symptoms = symptoms
                 st.session_state.route = route
@@ -146,16 +147,21 @@ elif st.session_state.step == 2:
     if "audit_report" not in st.session_state and "validation_error" not in st.session_state:
         model = genai.GenerativeModel("gemini-3.8-flash")
         
-        # --- PHASE 1: STRICT IMAGE VALIDATION ---
-        with st.spinner("🔍 Phase 1: Validating authenticity of uploaded evidence..."):
+        # --- PHASE 1: STRICT 4-PART IMAGE VALIDATION ---
+        with st.spinner("🔍 Phase 1: Validating authenticity of all 4 uploaded documents..."):
             try:
                 val_prompt = """
-                You are a strict legal document verification AI. Look at the attached images and their assigned labels. 
-                Verify if each image actually depicts a medical or legal document related to its label. 
-                If ANY image is a random picture (e.g., a selfie, a car, a dog, random objects) instead of a prescription, medicine, invoice, or license, it MUST be rejected.
+                You are a strict legal document verification AI. You have been provided with 4 images, each with a specific label. 
+                You MUST verify that EACH image is a legitimate, real-world document corresponding to its label:
+                1. Doctor's Prescription
+                2. Medicine Strip Photo
+                3. Pharmacy Tax Invoice
+                4. Pharmacist / Chemist License
                 
-                - If ALL images reasonably match their medical/legal labels, reply ONLY with the word "VALID".
-                - If ANY image is clearly unrelated or fake, reply EXACTLY with "INVALID: " followed by a brief reason (e.g., "INVALID: The image uploaded for the Doctor's Prescription is a picture of a dog.").
+                If ANY of the 4 images is a random picture (e.g., a selfie, a car, a pet, blank paper, unrelated screenshot) instead of the actual required document, you MUST reject it.
+                
+                - If ALL 4 images legitimately match their medical/legal labels, reply ONLY with the word "VALID".
+                - If ANY image is fake or unrelated, reply EXACTLY with "INVALID: " followed by which document is wrong and why (e.g., "INVALID: The Pharmacy Tax Invoice image provided is a picture of a keyboard.").
                 """
                 val_contents = [val_prompt] + st.session_state.labeled_images
                 val_response = model.generate_content(val_contents)
@@ -170,15 +176,15 @@ elif st.session_state.step == 2:
 
         # --- PHASE 2: ACTUAL AUDIT (Only if Phase 1 passed) ---
         if not st.session_state.validation_error:
-            with st.spinner("✅ Evidence accepted! Running strict AI Audit on documents..."):
+            with st.spinner("✅ All 4 documents verified! Running strict AI Audit on evidence..."):
                 try:
                     audit_prompt = f"""
                     You are an expert Clinical Pharmacovigilance and Legal Medical Auditor in India.
                     
-                    CRITICAL INSTRUCTION: Base your analysis EXCLUSIVELY on the patient details and the information explicitly visible in the uploaded images. 
+                    CRITICAL INSTRUCTION: Base your analysis EXCLUSIVELY on the patient details and the text/data explicitly visible in the 4 uploaded images. 
                     - DO NOT use external knowledge or general assumptions. 
                     - DO NOT hallucinate details, batch numbers, or names not present in the documents.
-                    - If information is missing, explicitly state "Data unavailable in provided evidence".
+                    - If a specific piece of information is missing from the documents, explicitly state "Data unavailable in provided evidence".
 
                     Patient Details:
                     - Medicine: {st.session_state.med_name}
@@ -207,7 +213,7 @@ elif st.session_state.step == 2:
     # --- RENDER RESULTS OR ERRORS ---
     if st.session_state.get("validation_error"):
         st.error(f"🛑 **Evidence Rejected:** {st.session_state.validation_error}")
-        st.info("Please go back and upload correct, legitimate documents to proceed.")
+        st.info("Please go back and upload correct, legitimate documents for all 4 categories to proceed.")
         if st.button("⬅️ Go Back to Step 1"):
             st.session_state.step = 1
             del st.session_state.validation_error
